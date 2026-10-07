@@ -1,64 +1,118 @@
-# Boundrix Runtime Authorization Demo
+<div align="center">
 
-A runnable, self-contained technical demonstration of **task-scoped runtime authorization** for autonomous AI coding agents.
+# 🛡️ Boundrix Runtime Authorization Demo
 
-```mermaid
-flowchart TD
-    subgraph Human["1. Human Developer"]
-        Dev["Developer (developer-01)\nDelegates Task: 'Fix token bug in auth-service'\nBranch: bugfix/* | Repo: auth-service"]
-    end
+**Deterministic Runtime Authorization & Execution Boundaries for Autonomous AI Agents**
 
-    subgraph Agent["2. Autonomous AI Agent"]
-        AIAgent["AI Coding Agent (coding-agent-01)\nAttempts tool actions"]
-    end
+[![CI Tests](https://img.shields.io/badge/tests-8%20passed-34D399?style=flat-square&logo=pytest&logoColor=white)](tests/)
+[![Python](https://img.shields.io/badge/python-3.9+-38BDF8?style=flat-square&logo=python&logoColor=white)](https://python.org)
+[![License](https://img.shields.io/badge/license-Apache%202.0-818CF8?style=flat-square)](LICENSE)
+[![Website](https://img.shields.io/badge/website-boundrix.io-F43F5E?style=flat-square)](https://boundrix.io)
 
-    subgraph Boundrix["3. Boundrix Runtime Authorization Boundary"]
-        PolicyCheck{"Policy & State Check\n• Is Task ACTIVE?\n• Is Repo == auth-service?\n• Is Branch == bugfix/*?\n• Is Action Allowed?"}
-    end
+<br/>
 
-    subgraph Target["4. Target Systems & Outcomes"]
-        AllowAction["✅ ALLOW\nExecute Tool / Open PR on auth-service"]
-        DenyAction["❌ DENY (Execution Halted)\n• Billing Service (Scope-Creep)\n• Main Branch (Protected)\n• Delete / IAM (Forbidden)\n• Revoked Task (Kill-Switch)"]
-        AuditLog["📄 Structured Audit Log (audit.jsonl)"]
-    end
+> **An autonomous AI agent may hold valid API credentials, but still attempt actions outside the specific task it was delegated to perform.**
 
-    Dev -->|Delegates Task & Policy| AIAgent
-    AIAgent -->|Proposes Action: modify, read, PR| PolicyCheck
-    PolicyCheck -->|Valid & Within Scope| AllowAction
-    PolicyCheck -->|Out of Scope or Revoked| DenyAction
-    PolicyCheck -.->|Logs Decision| AuditLog
-
-    classDef allow fill:#10b981,stroke:#047857,color:#ffffff;
-    classDef deny fill:#ef4444,stroke:#b91c1c,color:#ffffff;
-    classDef boundary fill:#1e293b,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
-    class AllowAction allow;
-    class DenyAction deny;
-    class PolicyCheck boundary;
-```
+</div>
 
 ---
 
-## Why This Exists
-
-When developers delegate tasks to autonomous coding agents (Claude Code, Cursor, Devin, custom agents), agents are granted API credentials to interact with GitHub and engineering tools.
-
-However, traditional security models stop at identity authentication: once an agent is given an API token, it holds broad access to every repository and branch permitted by that key.
-
-This repository demonstrates the core concept of **Boundrix**:
-
-> **An AI agent may have a valid identity and baseline API permissions, but every consequential action must be evaluated at runtime against the active task, delegated authority, target repository, branch, and execution context.**
+## ⚡ The 30-Second Overview
 
 ```text
-Identity permission ≠ Task authority
+                           Developer
+                               │
+                               │ Task: "Fix token bug in auth-service"
+                               ▼
+                       AI Coding Agent
+                               │
+                               ▼
+    [ Boundrix Runtime Authorization Boundary ] ── Evaluates at Execution Boundary (<1ms)
+                               │
+            ┌──────────────────┴──────────────────┐
+            ▼                                     ▼
+       ✅ ALLOW                               ❌ DENY (Execution Halted)
+  • Read auth-service                    • Modify billing-service (Scope-Creep)
+  • Modify auth-service                  • Delete main branch (Destructive Action)
+  • Run unit tests                       • Modify IAM (Privilege Escalation)
+  • Create Pull Request                  • Any action after Task Revocation (Kill Switch)
+```
+
+<br/>
+
+<div align="center">
+  <img src="docs/demo-preview.svg" alt="Boundrix Runtime Authorization Terminal Demo" width="100%" />
+</div>
+
+<br/>
+
+---
+
+## 🎯 The Core Concept: Identity Permission ≠ Task Authority
+
+```text
+Traditional IAM (Okta, GitHub RBAC, AWS IAM):
+"coding-agent-01 holds a permanent token with write access to all repositories."
+
+Boundrix Runtime Authorization:
+"coding-agent-01 may ONLY modify auth-service on branch bugfix/*
+for task-001 under developer-01's delegation while the task is ACTIVE.
+Any attempt to touch billing-service, main branch, or IAM is DENIED in real-time."
+```
+
+| Dimension | Traditional IAM | Boundrix Runtime Authorization |
+| :--- | :--- | :--- |
+| **Question Answered** | *"Who is this identity and what are its global permissions?"* | *"Should this specific action execute for this active task right now?"* |
+| **Scope Lifetime** | Permanent / Long-lived keys | Ephemeral, task-bound (15–60 min) |
+| **Enforcement Point** | Front-door login & token issuance | At the execution boundary immediately before each tool call |
+| **Branch & Scope Scoping** | Broad read/write access | Confined strictly to `bugfix/*` and assigned repository |
+| **Kill Switch** | Emergency manual token rotation | Instant task revocation denying the next tool call (<5ms) |
+
+---
+
+## 🚀 10-Second Quickstart
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/sasilabs/boundrix-runtime-authorization-demo.git
+cd boundrix-runtime-authorization-demo
+
+# 2. Setup environment & install test runner
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# 3. Run the visual demo
+python3 -m src.demo
 ```
 
 ---
 
-## Where Authority is Defined
+## 🎮 Interactive Mode (Try It Yourself)
 
-All permissions in this demo are defined in a human-readable, task-scoped policy:
+Run the live interactive prompt to test arbitrary actions, repositories, and branches against the policy engine:
 
-📄 **[`policies/coding_agent_policy.json`](policies/coding_agent_policy.json)**:
+```bash
+python3 -m src.interactive
+```
+
+### Try These 4 Test Scenarios:
+
+| Scenario | Action | Target Resource | Branch | Result | Reason |
+| :--- | :--- | :--- | :--- | :---: | :--- |
+| **1. Permitted Bugfix** | `modify` | `github://acme/auth-service` | `bugfix/token-expiration` | **`ALLOW` ✅** | Resource, action, and branch match task delegation. |
+| **2. Scope-Creep Attack** | `modify` | `github://acme/billing-service` | `bugfix/token-expiration` | **`DENY` ❌** | Resource is outside delegated task scope. |
+| **3. Protected Branch** | `modify` | `github://acme/auth-service` | `main` | **`DENY` ❌** | Branch is outside delegated authority (`bugfix/*`). |
+| **4. Instant Kill Switch** | *(Type `revoke`)* | Any resource (`auth-service`) | Any branch | **`DENY` ❌** | Task authorization has been revoked. |
+
+*(Type `activate` to re-enable the task at any time).*
+
+---
+
+## 📋 Where Policy is Defined
+
+Permissions are defined in human-readable, task-scoped policies (`policies/coding_agent_policy.json`):
+
 ```json
 {
   "policy_id": "coding-agent-task-policy",
@@ -83,169 +137,19 @@ All permissions in this demo are defined in a human-readable, task-scoped policy
   "denied_actions": [
     "delete_branch",
     "modify_iam"
+  ],
+  "authorized_delegation_paths": [
+    ["developer-01", "coding-agent-01"],
+    ["developer-01", "coding-agent-01", "github-tool"]
   ]
 }
 ```
 
 ---
 
-## Traditional IAM vs Runtime Authorization
+## ⚡ Mid-Task Revocation (Real-Time Kill Switch)
 
-```text
-IAM:
-"coding-agent-01 has a token with write access to all organization repositories."
-
-Boundrix Runtime Authorization:
-"coding-agent-01 may ONLY modify auth-service on branch bugfix/*
-for task-001 under developer-01's delegation while the task is ACTIVE.
-Any attempt to touch billing-service, main branch, or IAM is DENIED."
-```
-
-| Dimension | Traditional IAM (Okta, GitHub RBAC, AWS IAM) | Boundrix Runtime Authorization |
-| :--- | :--- | :--- |
-| **Question Answered** | *"Who is the identity and what can it access globally?"* | *"Should this specific action execute for this active task right now?"* |
-| **Scope Lifetime** | Permanent / Long-lived keys | Ephemeral, task-bound (15–60 min) |
-| **Enforcement Point** | Front-door login & token issuance | At the execution boundary before each tool call |
-| **Branch & Scope Scoping** | Broad read/write access | Confined to `bugfix/*` and assigned repository |
-| **Kill Switch** | Manual token rotation / credential revocation | Instant task-level revocation denying the next action |
-
----
-
-## Quickstart & Testing
-
-### 1. Clone & Setup
-
-```bash
-git clone https://github.com/sasilabs/boundrix-runtime-authorization-demo.git
-cd boundrix-runtime-authorization-demo
-
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
----
-
-### 2. Interactive Exploration Mode (Try It Yourself)
-
-Run the interactive prompt where you can enter arbitrary actions, repositories, and branches to test the guardrails live:
-
-```bash
-python3 -m src.interactive
-```
-
-#### 4 Scenarios to Try in Interactive Mode:
-
-#### 🟢 Scenario 1: Permitted Bugfix Action (ALLOW ✅)
-* **Action**: `modify`
-* **Resource**: `github://acme/auth-service`
-* **Branch**: `bugfix/token-expiration`
-* 👉 **Result**: `ALLOW` *(Resource, branch, and action match task delegation)*
-
-#### 🔴 Scenario 2: Scope-Creep to Unrelated Repo (DENY ❌)
-* **Action**: `modify`
-* **Resource**: `github://acme/billing-service`
-* **Branch**: `bugfix/token-expiration`
-* 👉 **Result**: `DENY` *(Reason: Resource is outside delegated task scope)*
-
-#### 🔴 Scenario 3: Unauthorized Commit Directly to `main` (DENY ❌)
-* **Action**: `modify`
-* **Resource**: `github://acme/auth-service`
-* **Branch**: `main`
-* 👉 **Result**: `DENY` *(Reason: Branch is outside delegated authority)*
-
-#### ⚡ Scenario 4: Mid-Task Revocation Kill Switch (DENY ❌)
-* Type `revoke` in the prompt.
-* Then attempt any action on `auth-service`:
-  * **Action**: `read` | **Resource**: `github://acme/auth-service`
-* 👉 **Result**: `DENY` *(Reason: Task authorization has been revoked)*
-* Type `activate` to re-enable the task.
-
----
-
-### 3. Automated Benchmark Demo
-
-To run the full non-interactive test walkthrough across all 7 standard requests:
-
-```bash
-python3 -m src.demo
-```
-
----
-
-### 4. Run Automated Tests
-
-```bash
-pytest
-```
-
-Output:
-```text
-============================= test session starts ==============================
-collected 8 items
-
-tests/test_authorization.py .....                                        [ 62%]
-tests/test_delegation.py ..                                              [ 87%]
-tests/test_revocation.py .                                               [100%]
-
-============================== 8 passed in 0.03s ===============================
-```
-
----
-
-## Step-by-Step Scenario Walkthrough
-
-```text
-========================================================
-BOUNDRIX Runtime Authorization Demo
-========================================================
-
-Task:
-Fix auth bug in auth-service and create a pull request
-
-Delegator:
-developer-01
-
-Agent:
-coding-agent-01
-
-Policy:
-coding-agent-task-policy
-
---------------------------------------------------------
-REQUEST 1: read auth-service on bugfix/token-expiration
-Decision: ALLOW ✅ (Within delegated task scope)
-
---------------------------------------------------------
-REQUEST 2: modify auth-service on bugfix/token-expiration
-Decision: ALLOW ✅ (Within delegated task scope)
-
---------------------------------------------------------
-REQUEST 3: run_tests on auth-service
-Decision: ALLOW ✅ (Within delegated task scope)
-
---------------------------------------------------------
-REQUEST 4: create_pull_request on auth-service
-Decision: ALLOW ✅ (Within delegated task scope)
-
---------------------------------------------------------
-REQUEST 5: modify billing-service (Scope-Creep Attack)
-Decision: DENY ❌ (Resource is outside delegated task scope)
-
---------------------------------------------------------
-REQUEST 6: delete_branch on main (Destructive Action)
-Decision: DENY ❌ (Action 'delete_branch' is explicitly denied)
-
---------------------------------------------------------
-REQUEST 7: modify_iam on iam://production (Privilege Escalation)
-Decision: DENY ❌ (IAM modification is outside delegated task authority)
-```
-
----
-
-## Mid-Task Revocation (Kill Switch)
-
-Boundrix demonstrates that authority can be revoked **in real time while the task is active**:
+Boundrix allows supervisors to revoke authority **while an agent workflow is actively running**:
 
 ```text
 ========================================================
@@ -259,8 +163,7 @@ Action: modify auth-service
 Decision: ALLOW ✅
 
 --------------------------------------------------------
-Developer revokes task.
-Authorization State: REVOKED
+Developer revokes task ➔ Authorization State: REVOKED
 --------------------------------------------------------
 
 Agent attempts: create_pull_request
@@ -268,13 +171,13 @@ Decision: DENY ❌
 Reason: Task authorization has been revoked
 ```
 
-> **Security Distinction**: Boundrix denies the *next* protected action when authorization is re-evaluated at the execution boundary. It does not terminate active TCP sockets or rotate master provider tokens.
+> **Execution Boundary Note**: Boundrix denies the *next* protected action when re-evaluated at the execution boundary. It does not require rotating master provider tokens or killing operating system processes.
 
 ---
 
-## Delegation & Lineage Verification
+## ⛓️ Lineage & Delegation Verification
 
-Boundrix authorization requests carry full provenance context (`delegation_path`). If an unexpected or unauthorized tool is injected into the delegation chain, the engine rejects the request:
+Authorization requests carry provenance context (`delegation_path`). If an unexpected or unauthorized tool is injected into the delegation chain, the engine rejects the request:
 
 ```text
 Expected Delegation Path:
@@ -289,9 +192,9 @@ Reason: Delegation path is not authorized for this task
 
 ---
 
-## Audit Evidence
+## 📜 Audit Flight Recorder
 
-Every authorization check produces a structured audit record stored in `audit.jsonl`:
+Every authorization decision produces an auditable record logged to `audit.jsonl`:
 
 ```json
 {
@@ -299,19 +202,9 @@ Every authorization check produces a structured audit record stored in `audit.js
   "authorization_id": "authz-005",
   "request_id": "req-005",
   "task_id": "task-001",
-  "identity": {
-    "type": "agent",
-    "id": "coding-agent-01"
-  },
-  "delegator": {
-    "type": "human",
-    "id": "developer-01"
-  },
-  "delegation_path": [
-    "developer-01",
-    "coding-agent-01"
-  ],
-  "intent": "fix authentication bug",
+  "identity": { "type": "agent", "id": "coding-agent-01" },
+  "delegator": { "type": "human", "id": "developer-01" },
+  "delegation_path": ["developer-01", "coding-agent-01"],
   "resource": "github://acme/billing-service",
   "action": "modify",
   "decision": "DENY",
@@ -322,7 +215,66 @@ Every authorization check produces a structured audit record stored in `audit.js
 
 ---
 
-## What This Demonstrates vs Does NOT Demonstrate
+## 🧪 Automated Tests
+
+Run the complete test suite:
+
+```bash
+pytest
+```
+
+```text
+============================= test session starts ==============================
+collected 8 items
+
+tests/test_authorization.py .....                                        [ 62%]
+tests/test_delegation.py ..                                              [ 87%]
+tests/test_revocation.py .                                               [100%]
+
+============================== 8 passed in 0.03s ===============================
+```
+
+---
+
+## 🏗️ Repository Architecture
+
+```text
+boundrix-runtime-authorization-demo/
+│
+├── README.md                      # Comprehensive guide & visual walkthrough
+├── LICENSE                        # Apache 2.0
+├── requirements.txt               # Test dependencies (pytest)
+│
+├── src/
+│   ├── models.py                  # Standard library dataclasses (Request, Decision, Identity, Task)
+│   ├── policy.py                  # Task policy parser & glob matcher
+│   ├── authorizer.py              # Runtime authorization engine & revocation state manager
+│   ├── audit.py                   # JSON Lines structured flight logger (audit.jsonl)
+│   ├── demo.py                    # Formatted visual CLI demonstration runner
+│   └── interactive.py             # Live interactive exploration prompt
+│
+├── policies/
+│   └── coding_agent_policy.json   # Task-scoped security policy definition
+│
+├── examples/
+│   ├── allowed_actions.json       # Sample allowed payloads (repo.read, PR create)
+│   ├── denied_actions.json        # Sample denied payloads (billing-service, delete main, IAM)
+│   └── revocation.json            # State transition example (ACTIVE ➔ REVOKED)
+│
+├── tests/
+│   ├── test_authorization.py      # Tests for allowed, denied, and branch-scoped actions
+│   ├── test_revocation.py         # Tests for mid-task kill switch behavior
+│   └── test_delegation.py         # Tests for lineage-aware delegation path validation
+│
+└── docs/
+    ├── demo-preview.svg           # High-resolution terminal preview graphic
+    ├── architecture.md            # Execution-boundary sequence diagrams
+    └── security-model.md          # 6 foundational security principles
+```
+
+---
+
+## 🔍 What This Demonstrates vs Does NOT Demonstrate
 
 ### ✅ What This Demonstrates
 * **Least-Privilege Task Scoping**: Confinement to specific repos (`auth-service`) and branches (`bugfix/*`).
@@ -335,25 +287,33 @@ Every authorization check produces a structured audit record stored in `audit.js
 ### ❌ What This Does NOT Demonstrate
 * Real GitHub OAuth credentials or live GitHub API network calls.
 * Linux kernel syscall interception (eBPF/LSM).
-* Network TCP proxying.
+* Raw TCP/IP packet proxying.
 
 ---
 
-## Relation to Boundrix
+## 🌐 Relation to Boundrix
 
-This repository is an **educational, open-source technical demonstrator** designed to explain the core runtime authorization architecture of Boundrix.
+> **This is an open technical demonstration of concepts explored by Boundrix. It is not the production Boundrix implementation.**
 
-The production Boundrix platform expands on these principles with:
+The production [Boundrix](https://boundrix.io) platform expands on these principles with:
 * Multi-tenant policy distribution servers.
 * Enterprise SDKs (Python, Java, Kotlin).
 * Secret redaction & cryptographic flight logs.
 * Human-in-the-Loop (`REQUIRE_APPROVAL`) interactive step-up workflows.
 * Tool proxy gateways and Model Context Protocol (MCP) sidecars.
 
-For more information, visit [https://boundrix.io](https://boundrix.io).
+👉 Learn more at **[https://boundrix.io](https://boundrix.io)**.
 
 ---
 
-## License
+## 🏷️ GitHub Topics
+
+```text
+ai-agents • ai-security • agent-security • runtime-authorization • authorization • least-privilege • ai-coding-agents • agentic-ai • zero-trust • iam
+```
+
+---
+
+## 📄 License
 
 Apache 2.0 © 2026 SAS Labs (Boundrix). See [LICENSE](LICENSE) for details.
