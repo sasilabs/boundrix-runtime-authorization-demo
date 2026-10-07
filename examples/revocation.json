@@ -1,0 +1,26 @@
+{
+  "description": "Example showing mid-task state transition from ACTIVE to REVOKED",
+  "task_id": "task-001",
+  "state_transition": [
+    {
+      "step": 1,
+      "task_state": "ACTIVE",
+      "action": "modify",
+      "resource": "github://acme/auth-service",
+      "expected_decision": "ALLOW"
+    },
+    {
+      "step": 2,
+      "event": "Developer revokes task",
+      "task_state": "REVOKED"
+    },
+    {
+      "step": 3,
+      "task_state": "REVOKED",
+      "action": "create_pull_request",
+      "resource": "github://acme/auth-service",
+      "expected_decision": "DENY",
+      "expected_reason": "Task authorization has been revoked"
+    }
+  ]
+}

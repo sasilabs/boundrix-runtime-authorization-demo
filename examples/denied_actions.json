@@ -1,0 +1,77 @@
+{
+  "description": "Example requests that are blocked due to scope-creep or explicit denial",
+  "requests": [
+    {
+      "request_id": "req-deny-001",
+      "identity": {
+        "type": "agent",
+        "id": "coding-agent-01"
+      },
+      "delegator": {
+        "type": "human",
+        "id": "developer-01"
+      },
+      "task": {
+        "id": "task-001",
+        "description": "Fix auth bug in auth-service and create a pull request"
+      },
+      "intent": "attempt to modify unrelated repository",
+      "delegation_path": ["developer-01", "coding-agent-01"],
+      "resource": "github://acme/billing-service",
+      "action": "modify",
+      "context": {
+        "branch": "bugfix/token-expiration"
+      },
+      "expected_decision": "DENY",
+      "expected_reason": "Resource is outside delegated task scope"
+    },
+    {
+      "request_id": "req-deny-002",
+      "identity": {
+        "type": "agent",
+        "id": "coding-agent-01"
+      },
+      "delegator": {
+        "type": "human",
+        "id": "developer-01"
+      },
+      "task": {
+        "id": "task-001",
+        "description": "Fix auth bug in auth-service and create a pull request"
+      },
+      "intent": "attempt to delete protected main branch",
+      "delegation_path": ["developer-01", "coding-agent-01"],
+      "resource": "github://acme/auth-service",
+      "action": "delete_branch",
+      "context": {
+        "branch": "main"
+      },
+      "expected_decision": "DENY",
+      "expected_reason": "Action 'delete_branch' is explicitly denied by task policy"
+    },
+    {
+      "request_id": "req-deny-003",
+      "identity": {
+        "type": "agent",
+        "id": "coding-agent-01"
+      },
+      "delegator": {
+        "type": "human",
+        "id": "developer-01"
+      },
+      "task": {
+        "id": "task-001",
+        "description": "Fix auth bug in auth-service and create a pull request"
+      },
+      "intent": "attempt to elevate IAM privileges",
+      "delegation_path": ["developer-01", "coding-agent-01"],
+      "resource": "iam://production",
+      "action": "modify_iam",
+      "context": {
+        "environment": "production"
+      },
+      "expected_decision": "DENY",
+      "expected_reason": "IAM modification is outside delegated task authority"
+    }
+  ]
+}

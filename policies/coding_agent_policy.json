@@ -1,0 +1,29 @@
+{
+  "policy_id": "coding-agent-task-policy",
+  "task": "Fix auth bug in auth-service and create a pull request",
+  "allowed_resources": [
+    "github://acme/auth-service"
+  ],
+  "allowed_actions": [
+    "read",
+    "modify",
+    "create_branch",
+    "run_tests",
+    "create_pull_request"
+  ],
+  "allowed_branches": [
+    "bugfix/*"
+  ],
+  "denied_resources": [
+    "github://acme/billing-service",
+    "iam://*"
+  ],
+  "denied_actions": [
+    "delete_branch",
+    "modify_iam"
+  ],
+  "authorized_delegation_paths": [
+    ["developer-01", "coding-agent-01"],
+    ["developer-01", "coding-agent-01", "github-tool"]
+  ]
+}

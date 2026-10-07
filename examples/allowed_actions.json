@@ -1,0 +1,53 @@
+{
+  "description": "Example requests that are permitted within task scope",
+  "requests": [
+    {
+      "request_id": "req-allow-001",
+      "identity": {
+        "type": "agent",
+        "id": "coding-agent-01"
+      },
+      "delegator": {
+        "type": "human",
+        "id": "developer-01"
+      },
+      "task": {
+        "id": "task-001",
+        "description": "Fix auth bug in auth-service and create a pull request"
+      },
+      "intent": "read repository files to understand bug",
+      "delegation_path": ["developer-01", "coding-agent-01"],
+      "resource": "github://acme/auth-service",
+      "action": "read",
+      "context": {
+        "branch": "bugfix/token-expiration",
+        "environment": "development"
+      },
+      "expected_decision": "ALLOW"
+    },
+    {
+      "request_id": "req-allow-002",
+      "identity": {
+        "type": "agent",
+        "id": "coding-agent-01"
+      },
+      "delegator": {
+        "type": "human",
+        "id": "developer-01"
+      },
+      "task": {
+        "id": "task-001",
+        "description": "Fix auth bug in auth-service and create a pull request"
+      },
+      "intent": "submit pull request for bug fix",
+      "delegation_path": ["developer-01", "coding-agent-01"],
+      "resource": "github://acme/auth-service",
+      "action": "create_pull_request",
+      "context": {
+        "branch": "bugfix/token-expiration",
+        "environment": "development"
+      },
+      "expected_decision": "ALLOW"
+    }
+  ]
+}
